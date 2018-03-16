@@ -1,0 +1,25 @@
+.region-sidebar-first .nav li a {
+  perspective: 100px;
+  transform-style: preserve-3d; }
+  .region-sidebar-first .nav li a::before {
+    display: none;
+    content: "";
+    height: inherit;
+    width: 30px;
+    background-image: url("../images/hover_decor.png");
+    animation-name: rotate;
+    animation-duration: 1.5s;
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+    animation-fill-mode: both; }
+@keyframes rotate {
+  from {
+    transform: rotate3d(1, 0, 0, 0deg); }
+  50% {
+    transform: rotate3d(1, 0, 0, 360deg); }
+  to {
+    transform: rotate3d(1, 0, 0, 0deg); } }
+  .region-sidebar-first .nav li a:hover:before {
+    display: block; }
+
+/*# sourceMappingURL=sidebar-additional.css.map */

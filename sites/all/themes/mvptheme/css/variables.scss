@@ -1,0 +1,106 @@
+// Scss variables
+$line: 10px;
+$time: 0.2s;
+
+// Colors
+$white: #FFFFFF;
+$lightBlue: #50E3C2;
+
+// Gradients
+$headerButtonBg: linear-gradient(198.81deg, #77F2CF 0%, #3AAB8B 100%);
+$headerButtonHover: linear-gradient(198.81deg, darken(10, #77F2CF) 0%, darken(10, #3AAB8B) 100%);
+$labelBg: linear-gradient(134.72deg, #3023AE 0%, #C86DD7 100%);
+
+// Shadows
+$shadow: 0 $line * 2 $line * 2 0 rgba(0,0,0,0.4);
+$headerButtonShadow: 0 $line * 1.5 $line * 2.2 0 rgba(0,0,0,0.25);
+$labelShadow: 0 $line / 2 $line 0 rgba(0,0,0,0.22);
+
+// Fonts mixins
+@font-face {
+  font-family: "Roboto-Medium";
+  src: url("../fonts/Roboto-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Roboto-Bold";
+  src: url("../fonts/Roboto-Bold.ttf") format("truetype");
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Roboto-Black";
+  src: url("../fonts/Roboto-Black.ttf") format("truetype");
+  font-weight: 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "GothamProBlack";
+  src: url("../fonts/GothamProBlack.ttf") format("truetype");
+  font-weight: 900;
+  font-style: normal;
+}
+
+// Fonts variables
+$common: "Arial", sans-serif;
+$roboto: "Roboto-Medium", $common;
+$robotoBold: "Roboto-Bold", $roboto;
+$robotoBlack: "Roboto-Black", $robotoBold;
+
+// Mixins
+@mixin reset {
+  width: 100%;
+  height: 100%;
+  font: {
+    size: $line * 1.6;
+  }
+
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  &, * {
+    box-sizing: border-box;
+    color: $white;
+  }
+
+  &, *, h1, h2, h3 {
+    padding: 0;
+    margin: 0;
+    font: {
+      weight: normal;
+    }
+  }
+}
+
+@mixin headerButton {
+  padding: $line $line * 2.5;
+  background-image: $headerButtonBg;
+  box-shadow: $headerButtonShadow;
+  text-transform: uppercase;
+  outline: none;
+  cursor: pointer;
+  border: {
+    style: none;
+    radius: $line * .3;
+  }
+  font: {
+    family: $robotoBlack;
+    size: 1em;
+  }
+  transition: {
+    duration: $time;
+    timing-function: linear;
+  }
+
+  &:hover {
+    background-image: $headerButtonHover;
+    box-shadow: none;
+  }
+}

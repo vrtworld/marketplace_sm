@@ -1,0 +1,51 @@
+.region-sidebar-first {
+  @mixin rotateX($iterations: 1) {
+    $linear: linear;
+    @keyframes rotate {
+      from {
+        transform: rotate3d(1, 0, 0, 0deg);
+      }
+      50% {
+        transform: rotate3d(1, 0, 0, 360deg);
+      }
+      to {
+        transform: rotate3d(1, 0, 0, 0deg);
+      }
+    }
+
+    animation: {
+      name: rotate;
+      duration: .5s;
+      iteration-count: $iterations;
+      timing-function: $linear;
+      @if ($iterations: infinite) {
+        fill-mode: forwards;
+      } @else {
+        fill-mode: both;
+      }
+    }
+  }
+
+  .nav li a {
+    perspective: 100px;
+    transform-style: preserve-3d;
+
+    &::before {
+      display: none;
+      content: "";
+      height: 20px;
+      width: 30px;
+      background: {
+        image: url("../images/hover_decor.png");
+      }
+
+      @include rotateX(infinite);
+    }
+
+    &:hover {
+      &::before {
+        display: block;
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+body {
+  background-image: url("../images/bg.png");
+  background-position: top center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: scroll; }
+  body #navbar a {
+    background-color: transparent; }
+    body #navbar a:hover, body #navbar a:focus, body #navbar a:active {
+      background-color: transparent; }
+
+/*# sourceMappingURL=design.css.map */

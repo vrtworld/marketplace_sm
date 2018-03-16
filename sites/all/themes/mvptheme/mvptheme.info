@@ -1,0 +1,41 @@
+name = MVP
+description = MVP
+core = 7.x
+base theme = bootstrap
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Regions
+;;;;;;;;;;;;;;;;;;;;;
+
+regions[navigation]     = 'Navigation'
+regions[header]         = 'Top Bar'
+regions[highlighted]    = 'Highlighted'
+regions[help]           = 'Help'
+regions[slider]         = 'Slider'
+regions[slidernews]     = 'Slider News'
+regions[content]        = 'Content'
+regions[sidebar_first]  = 'Primary'
+regions[sidebar_second] = 'Secondary'
+regions[footer]         = 'Footer'
+regions[page_top]       = 'Page top'
+regions[page_bottom]    = 'Page bottom'
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Stylesheets
+;;;;;;;;;;;;;;;;;;;;;
+stylesheets[all][] = css/owl.carousel.min.css
+stylesheets[all][] = css/owl.theme.default.min.css
+stylesheets[all][] = css/magnific-popup.css
+stylesheets[all][] = css/fontawesome-all.min.css
+stylesheets[all][] = css/style.css
+stylesheets[all][] = css/sidebar-additional.css
+stylesheets[all][] = css/design.css
+
+scripts[] = js/owl.carousel.min.js
+scripts[] = js/jquery.magnific-popup.min.js
+scripts[] = js/jquery.countdown.min.js
+scripts[] = js/particles.min.js
+scripts[] = js/qrcode.min.js
+scripts[] = js/custom.js

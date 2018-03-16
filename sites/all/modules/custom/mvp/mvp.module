@@ -1,0 +1,1372 @@
+<?php
+
+function mvp_menu()
+{
+    $items = array();
+    
+    $items['cart'] = array(
+        'title'           => t('Cart'),
+        'access callback' => 'mvp_checkout_access',
+        'page callback'   => 'mvp_cart_page'
+    );
+
+    $items['hackathons'] = array(
+        'title'           => t('Hackathons'),
+        'page callback'   => 'mvp_hackathons_page',
+        'access callback' => TRUE,
+    );
+    $items['grants'] = array(
+        'title'           => t('Grants'),
+        'page callback'   => 'mvp_grants_page',
+        'access callback' => TRUE,
+    );
+
+    $items['checkout/%'] = array(
+        'title'           => t('Checkout'),
+        'access callback' => 'mvp_checkout_access',
+        'page callback'   => 'mvp_checkout_page',
+        'page arguments'  => array(1),
+    );
+
+    $items['checkout/%/pay'] = array(
+        'title'           => t('Pay checkout'),
+        'access callback' => 'mvp_checkout_access',
+        'page callback'   => 'mvp_checkout_pay_page',
+        'page arguments'  => array(1),
+    );
+
+    $items['admin/config/system/wallets'] = array(
+      'title' => t('Wallets'),
+      'description' => 'Table all wallets',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('mvp_admin_wallets_form'),
+      'access arguments' => array('administer node'),
+      'access callback' => TRUE,
+      'type' => MENU_NORMAL_ITEM,
+    );
+
+    $items['ajax/st/%/%'] = array(
+        'title' => 'Load more',
+        'page callback' => 'mvp_study_get_ajax_callback',
+        'page arguments' => array(2,3),
+        'delivery callback' => 'ajax_deliver',
+        'access arguments' => array('access content'),
+      );
+    
+    return $items;
+
+}
+
+function mvp_menu_alter(&$items) {
+
+    $items['taxonomy/term/%taxonomy_term'] = array(
+
+      'access callback' => TRUE,
+      'page callback' => 'mvp_term_pages',
+      'page arguments' => array(2),
+    );
+
+    $items['taxonomy/term/%taxonomy_term/view'] = array(
+
+      'access callback' => TRUE,
+      'page callback' => 'mvp_term_pages',
+
+      'page arguments' => array(2),
+    );
+
+}
+
+function mvp_term_pages($tid){
+
+    $vocabulary = taxonomy_vocabulary_load($tid->vid);
+
+    switch($vocabulary->machine_name) {
+
+        case 'cats':
+            return mvp_categories_page($tid); 
+        break;
+
+   
+  }
+}
+
+
+function mvp_checkout_access(){
+    global $user;
+    /*if (user_is_anonymous() == true) {
+        drupal_goto('user/login');
+    }*/
+    return true;
+}
+
+function mvp_theme(){
+    $path = drupal_get_path('module', 'mvp') . '/templates';
+    return array(
+        
+        'mvp_checkout_page' => array(
+            'template'       => 'checkout-page',
+            'path'           => $path,
+        ),
+        'mvp_checkout_pay_page' => array(
+            'template'       => 'checkout-page-pay',
+            'path'           => $path,
+        ),
+        'products_block' => array(
+            'template' => 'products-block',
+            'path' => $path,
+        ),
+        'news_block' => array(
+            'template' => 'news-block',
+            'path' => $path,
+        ),
+        'categories_block' => array(
+            'template' => 'categories-block',
+            'path' => $path,
+        ),
+        'category_page' => array(
+            'template' => 'category-page',
+            'path' => $path,
+        ),
+    );
+}
+
+function mvp_block_info()
+{
+
+    $blocks['user_header'] = array(
+        'info' => t('User top'),
+    );
+    $blocks['main_slider'] = array(
+        'info' => t('Main slider'),
+    );
+    $blocks['news_main'] = array(
+        'info' => t('News block'),
+    );
+    $blocks['main_categories'] = array(
+        'info' => t('Main page categories with products'),
+    );
+    $blocks['categories_front'] = array(
+        'info' => t('Main page categories'),
+    );
+    $blocks['top_product_category'] = array(
+        'info' => t('Top product category'),
+    );
+    $blocks['similar_products'] = array(
+        'info' => t('Similar products'),
+    );
+
+	return $blocks;
+}
+
+function mvp_block_view($delta = '')
+
+{
+    $block = array();
+    switch ($delta) {
+
+        case 'user_header':
+            $block['subject'] = t('User top');
+            $block['content'] = mvp_user_header_block();
+
+        break;
+
+        case 'main_slider':
+            $block['subject'] = t('Main slider');
+            $block['content'] = mvp_main_slider_block();
+
+        break;
+
+        case 'news_main':
+            $block['subject'] = t('News block');
+            $block['content'] = mvp_news_main_block();
+
+        break;
+
+        case 'main_categories':
+            $block['subject'] = t('Main page categories  with products');
+            $block['content'] = mvp_main_categories_block();
+
+        break; 
+        case 'categories_front':
+            $block['subject'] = t('Main page categories');
+            $block['content'] = mvp_categories_front_block();
+
+        break;
+        case 'top_product_category':
+            $block['subject'] = t('Top product categorys');
+            $block['content'] = mvp_top_product_category_block();
+
+        break;
+        case 'similar_products':
+            $block['subject'] = t('Similar products');
+            $block['content'] = mvp_similar_products_block();
+
+        break;
+
+        
+ 	}
+
+    return $block;
+
+}
+
+
+
+function mvp_user_header_block(){
+	$build = '<div id="top-block-ajax">';
+	global $user;
+    $uid = $user->uid;
+    if ($uid != 0) {
+        $order = commerce_cart_order_load($user->uid);
+    } else {
+        $order = commerce_cart_order_load();
+    }
+
+    if (!empty($order)) {
+        $qty = count($order->commerce_line_items['und']);
+        $build .= l(t('<span>'.$qty.'</span><i class="fas fa-shopping-cart"></i>'), 'cart', array('attributes' => array('class' => array('cart-header')),'html' => TRUE));
+    }
+	if ($user->uid > 0) {
+		$build .= l($user->name, 'user');
+		/*$build .= l('123 <span>VRT</span>', 'user/token', array('html' => TRUE));*/
+	} else {
+		$build .= l(t('Login'), 'user');
+		$build .= l(t('Register'), 'user/register');
+		
+
+	}
+
+	$build .= l(t('Buy token'), 'https://presale.vrt.world', array('attributes' => array('class' => array('btn btn-blue'), 'target' => '_blank')));
+    $build .= '</div>';
+	return $build;
+
+}
+
+function mvp_main_slider_block(){
+	$build  = '';
+    $query  = new EntityFieldQuery();
+    $result = $query->entityCondition('entity_type', 'node')
+        ->entityCondition('bundle', 'slider')
+        ->execute();
+
+    if (!empty($result)) {
+        $nodes = node_load_multiple(array_keys($result['node']));
+        $build = node_view_multiple($nodes, 'teaser');
+        $build['first'] = array('#type' => 'markup', '#markup' => '<div class="front-slider-carousel owl-carousel owl-theme">', '#weight' => '-99');
+        $build['last']  = array('#type' => 'markup', '#markup' => '</div>', '#weight' => 99);
+    }
+    return $build;
+}
+
+
+function mvp_preprocess_page(&$vars){
+    if (arg(0) == 'node' && arg(2) == 'edit') {
+        $themepath = drupal_get_path('theme', 'mvptheme');
+
+        drupal_add_css($themepath . '/css/fontawesome-all.min.css');
+    }
+}
+
+function mvp_news_main_block(){
+    $build  = '';
+    $query  = new EntityFieldQuery();
+    $result = $query->entityCondition('entity_type', 'node')
+        ->entityCondition('bundle', 'news')
+        ->range(0, 10)
+        ->execute();
+
+    if (!empty($result)) {
+        $nodes = node_load_multiple(array_keys($result['node']));
+        
+        $all_nodes = node_view_multiple($nodes, 'teaser');
+        unset($all_nodes['nodes']['#sorted']);
+        $content['items'] = $all_nodes;
+        $build = theme('news_block', $content);
+    }
+    return $build;
+}
+
+function mvp_categories_front_block(){
+    $build = '';
+    $voc = taxonomy_vocabulary_machine_name_load('cats');
+    $tree = taxonomy_get_tree($voc->vid);
+    foreach ($tree as $key => $value) {
+        $term = taxonomy_term_load($value->tid);
+        if (!empty($term->field_show_on_front) && $term->field_show_on_front['und'][0]['value'] == 1) {
+            $build['terms'][$value->tid] = $term;
+        }
+    }
+    $content = theme('categories_block', $build);
+    return $content;
+}
+
+function mvp_top_product_category_block(){
+    $build = '';
+    $content = '';
+    if (arg(0) == 'taxonomy') {
+        $tid = arg(2);
+        
+        $value = taxonomy_term_load($tid);
+        $childs = taxonomy_get_children($value->tid);
+            if (empty($childs)) {
+                $query  = new EntityFieldQuery();
+                $result = $query->entityCondition('entity_type', 'node')
+                    ->entityCondition('bundle', 'product')
+                    ->fieldCondition('field_show_on_front', 'value', 1)
+                    ->fieldCondition('field_category', 'tid', $tid)
+                    ->range(0, 10)
+                    ->execute();
+                    $decription = !empty($value->description) ? '<div class="description">'.$value->description.'</div>' : '';
+                    $content['items'][$tid]['name'] = $value->name;
+                    $content['items'][$tid]['tid'] = $value->tid;
+                    $content['items'][$tid]['decription'] = $decription;
+                    if (!empty($result)) {
+                        $nodes = node_load_multiple(array_keys($result['node']));
+                        $all_nodes = node_view_multiple($nodes, 'teaser');
+                        unset($all_nodes['nodes']['#sorted']);
+                        $content['items'][$tid]['node'] = $all_nodes;
+                        
+                    }
+                $build = theme('products_block', $content);
+            }
+    }
+    
+    return $build;
+}
+
+function mvp_similar_products_block(){
+    $build = '';
+    $content = '';
+    if (arg(0) == 'node') {
+        $node = node_load(arg(1));
+        if ($node->type == 'product' && !empty($node->field_category)) {
+           $tid = $node->field_category['und'][0]['tid'];
+            $value = taxonomy_term_load($tid);
+            $query  = new EntityFieldQuery();
+            $result = $query->entityCondition('entity_type', 'node')
+                ->entityCondition('bundle', 'product')
+                ->fieldCondition('field_category', 'tid', $tid)
+                ->propertyCondition('nid', arg(1), '<>')
+                ->range(0, 10)
+                ->execute();
+                $decription = !empty($value->description) ? '<div class="description">'.$value->description.'</div>' : '';
+                
+                if (!empty($result)) {
+                    $nodes = node_load_multiple(array_keys($result['node']));
+                    $all_nodes = node_view_multiple($nodes, 'teaser');
+                    unset($all_nodes['nodes']['#sorted']);
+                    $content['items'][$tid]['node'] = $all_nodes;
+                    $build = theme('products_block', $content);
+                }
+            }
+        
+    }
+    
+    return $build;
+}
+
+function mvp_entity_info_alter(&$entity_info) {
+
+
+  $entity_info['node']['view modes']['cool_teaser'] = array(
+    'label' => t('Cool teaser'),
+    'custom settings' => TRUE,
+  );
+
+}
+
+
+function mvp_categories_page($tid){
+    $build = '';
+    $childs = taxonomy_get_children($tid->tid);
+    if (!empty($childs)) {
+        
+        $content['childs']['image'] = !empty($tid->field_photo) ? $tid->field_photo['und'][0]['uri'] : '';
+        foreach ($childs as $key => $value) {
+            $query  = new EntityFieldQuery();
+            $result = $query->entityCondition('entity_type', 'node')
+                    ->entityCondition('bundle', 'product')
+                    ->fieldCondition('field_category', 'tid', $key)
+                    ->range(0, 20)
+                    ->execute();
+            if (!empty($result)) {
+
+                $decription = !empty($value->description) ? '<div class="description">'.$value->description.'</div>' : '';
+                $content['childs'][$key]['name'] = $value->name;
+                $content['childs'][$key]['tid'] = $value->tid;
+                $content['childs'][$key]['decription'] = $decription;
+                
+                $nodes = node_load_multiple(array_keys($result['node']));
+                $all_nodes = node_view_multiple($nodes, 'teaser');
+                unset($all_nodes['nodes']['#sorted']);
+                $content['childs'][$key]['items'] = $all_nodes;
+            }
+        }
+    } else {
+        $query  = new EntityFieldQuery();
+            $result = $query->entityCondition('entity_type', 'node')
+                    ->entityCondition('bundle', 'product')
+                    ->fieldCondition('field_category', 'tid', $tid->tid)
+                    ->range(0, 20)
+                    ->execute();
+            if (!empty($result)) {
+                $nodes = node_load_multiple(array_keys($result['node']));
+                $all_nodes = node_view_multiple($nodes, 'teaser');
+                unset($all_nodes['nodes']['#sorted']);
+                $content['nodes']['items'] = $all_nodes;
+            }
+    }
+    
+
+   
+    $build = theme('category_page', $content);
+    return $build;
+}
+
+
+
+function mvp_main_categories_block(){
+    $content = '';
+    $voc = taxonomy_vocabulary_machine_name_load('cats');
+    $tree = taxonomy_get_tree($voc->vid);
+    foreach ($tree as $key => $value) {
+        $tid = $value->tid;
+        $query  = new EntityFieldQuery();
+        $result = $query->entityCondition('entity_type', 'node')
+            ->entityCondition('bundle', 'product')
+            ->fieldCondition('field_category', 'tid', $tid)
+            ->range(0, 10)
+            ->execute();
+        if (!empty($result)) {
+            $nodes = node_load_multiple(array_keys($result['node']));
+            $decription = !empty($value->description) ? '<div class="description">'.$value->description.'</div>' : '';
+            $content['items'][$tid]['name'] = $value->name;
+            $content['items'][$tid]['tid'] = $value->tid;
+            $content['items'][$tid]['decription'] = $decription;
+            $all_nodes = node_view_multiple($nodes, 'teaser');
+            unset($all_nodes['nodes']['#sorted']);
+            $content['items'][$tid]['node'] = $all_nodes;
+            
+        }
+
+    }
+    $build = theme('products_block', $content);
+    return $build;
+}
+
+function mvp_cart_form($form, &$form_state, $node){
+    $form = array(
+        '#prefix' => '<div id="fullform">',
+        '#suffix' => '</div>',
+    );
+    $form['node'] = array(
+        '#type' => 'hidden',
+        '#value' => $node->nid,
+    );
+
+    $form['price'] = array(
+        '#type' => 'hidden',
+        '#value' => $node->field_price['und'][0]['value'],
+    );
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => '<i class="fas fa-cart-plus"></i>'. t('TO THE BASKET'),
+        '#ajax'  => array(
+                'callback' => 'mvp_cart_form_ajax',
+                'wrapper'  => 'fullform',
+                'progress' => '',
+            ),
+        '#attributes' => array(
+            'class' => array('btn-blue pull-right'),
+        ),
+    );
+    return $form;
+}
+
+function mvp_cart_form_ajax($form, &$form_state){
+    $block       = block_load('mvp', 'user_header');
+    $block       = _block_render_blocks(array($block));
+    $block_build = _block_get_renderable_array($block);
+    $commands[]  = ajax_command_replace('#top-block-ajax', drupal_render($block_build));
+    $commands[]  = ajax_command_replace('#fullform', render($form));
+    return array('#type' => 'ajax', '#commands' => $commands);
+}
+
+function mvp_cart_form_submit($form, &$form_state){
+    global $user;
+    $uid = $user->uid;
+    $node = node_load($form_state['values']['node']);
+    $price = $form_state['values']['price'] * 100;
+    if ($uid == 0) {
+        drupal_session_start();
+        if (!commerce_cart_order_session_exists()) {
+            $order      = commerce_cart_order_new();
+            $order->log = t("Created by checkout page.");
+            commerce_cart_order_session_save($order->order_id);
+        }
+    }
+    if ($uid > 0) {
+        $order = commerce_cart_order_load($uid);
+    } else {
+        $order = commerce_cart_order_load();
+    }
+
+    if (empty($order->order_id)) {
+        $order = commerce_cart_order_new($uid, 'commerce_order');
+        commerce_order_save($order);
+    }
+    $order_wrapper    = entity_metadata_wrapper('commerce_order', $order);
+    $line_item         = commerce_line_item_new('mvp', $order->order_id);
+    $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+    $base_price = array(
+      'amount' => $price,
+      'currency_code' => 'VRT',
+      'data' => array(),
+    );
+    $line_item_wrapper->commerce_unit_price = $base_price;
+    $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add($base_price, 'base_price', $base_price, TRUE);
+    $line_item_wrapper->line_item_label->set($node->title);
+    $line_item_wrapper->field_product->set($node->nid);
+    commerce_line_item_save($line_item);
+    $order_wrapper->commerce_line_items[] = $line_item;
+    if ($order->order_number == $order->order_id) {
+      $order->order_number = md5($order->order_id);
+    }
+    commerce_order_save($order);
+
+    
+}
+
+function mvp_commerce_line_item_type_info() {
+
+  $line_item_types = array();
+
+  $line_item_types['mvp'] = array(
+    'name' => t('Product'),
+    'description' => t('This custom type is for custom line items.'),
+    'product' => FALSE,
+    'base' => 'mvp',
+  );
+
+  return $line_item_types;
+
+}
+
+function mvp_enable() {
+     commerce_line_item_configure_line_item_fields(array('mvp'));
+}
+
+function mvp_commerce_currency_info() {
+  return array (
+    'VRT' => array(
+      'code' => 'VRT',
+      'numeric_code' => '003',
+      'symbol' => 'VRT',
+      'name' => t('VRT'),
+      'symbol_placement' => 'after',
+      'code_placement' => '',
+      'minor_unit' => t('VRT'),
+      'major_unit' => t('VRT'),
+      'rounding_step' => '0.000000001',
+    ),
+  );
+}
+
+function mvp_commerce_order_presave($order) {
+  
+}
+
+function mvp_cart_page(){
+    
+    global $user;
+        $content = '<div class="empty-text">'.t('Your cart is empty').'</div>';
+
+      // First check to make sure we have a valid order.
+      if ($order = commerce_cart_order_load($user->uid)) {
+        $wrapper = entity_metadata_wrapper('commerce_order', $order);
+        
+        // Only show the cart form if we found product line items.
+        if (count($order->commerce_line_items['und']) > 0) {
+
+          // Add the form for editing the cart contents.
+          $content = commerce_embed_view('commerce_cart_form', 'default', array($order->order_id), 'cart');
+        }
+      }
+
+    return $content;
+    
+}
+
+
+function mvp_checkout_page($order_id){
+    $content = '';
+    global $user;
+    
+    $user_load = user_load($user->uid);
+    $order = commerce_order_load_by_number($order_id);
+
+    if ($user->uid == $order->uid) {
+         if ($order->status <> 'completed') {
+           if (count($order->commerce_line_items['und']) > 0) {
+            $products = commerce_embed_view('commerce_cart_summary', 'default', array($order->order_id), 'cart');
+            }
+            $form = drupal_get_form('mvp_checkout_place_order_form', $user, $order);
+            return theme('mvp_checkout_page', array('user' => $user_load, 'order' => $products, 'form' => $form));
+        } else {
+            return '<div class="noorder">'.t('Order completed').'</div>';
+        }
+         
+    } else {
+        return '<div class="noorder">'.t('No order found').'</div>';
+    }
+    
+   
+}
+
+function mvp_checkout_place_order_form($form, &$form_state, $user, $order){
+    $form = array(
+        '#prefix' => '<div id="place-form">',
+        '#suffix' => '</div>',
+    );
+    $form['orderid'] = array(
+        '#type' => 'hidden',
+        '#value' => $order->order_id,
+    );
+    $form['uid'] = array(
+        '#type' => 'hidden',
+        '#value' => $user->uid,
+    );
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('PAY ORDER'),
+        '#ajax' => array(
+            'callback' => 'mvp_checkout_place_order_form_ajax',
+            'wrapper'  => 'place-form',
+            'progress' => '',
+        ),
+        '#attributes' => array(
+            'class' => array('btn-blue')
+        ),
+    );
+    
+    
+    
+    return $form;
+
+}
+
+function mvp_checkout_place_order_form_ajax($form, &$form_state){
+    if (!empty($form_state['paynum'])) {
+        $prevpay = db_select('mvp_order_pay', 'h')
+                ->fields('h')
+                ->condition('h.id', $form_state['paynum'])
+                ->execute()
+                ->fetchObject();
+        $path = "checkout/". $prevpay->uuid . '/pay';
+        ctools_include('ajax');
+        ctools_add_js('ajax-responder');
+        $commands[] = ctools_ajax_command_redirect($path);
+        print ajax_render($commands);
+        exit;
+    } else {
+        return $form;
+    }
+    
+}
+
+function mvp_checkout_place_order_form_submit($form, &$form_state){
+    $uid = $form_state['values']['uid'];
+    $order_id = $form_state['values']['orderid'];
+    $order = commerce_order_load($order_id);
+    $topay = $order->commerce_order_total['und'][0]['amount'] / 100;
+    $data = array(
+        'topay' => $topay,
+    );
+    $wallets = db_select('mvp_wallets', 'h')
+                ->fields('h')
+                ->condition('h.changed', 0)
+                ->execute()
+                ->fetchAll();
+    $wallet_key = key($wallets);
+    $wallet_id = $wallets[$wallet_key]->id;
+    $prevpay = db_select('mvp_order_pay', 'h')
+                ->fields('h')
+                ->condition('h.uid', $uid)
+                ->condition('h.orderid', $order_id)
+                ->execute()
+                ->fetchObject();
+    if (empty($prevpay)) {
+        $newpay = db_insert('mvp_order_pay')
+                ->fields(array(
+                  'uuid' => $order->order_number,
+                  'orderid' => $order_id,
+                  'uid' => $uid,
+                  'wid' => $wallet_id,
+                  'status' => 0,
+                  'data' => serialize($data),
+                  'created' => time(),
+                  'changed' => time(),
+                ))
+                ->execute();
+        db_update('mvp_wallets')
+                  ->fields(array(
+                        'changed' => 1,
+                    ))
+                    ->condition('id', $wallet_id) 
+                    ->execute();
+        $form_state['paynum'] = $newpay;
+    } else {
+        $id = db_update('mvp_order_pay')
+                  ->fields(array(
+                          'wid' => $wallet_id,
+                          'changed' => time(),
+                        ))
+                        ->condition('id', $prevpay->id) 
+                        ->execute();
+        db_update('mvp_wallets')
+                  ->fields(array(
+                        'changed' => 1,
+                    ))
+                    ->condition('id', $wallet_id) 
+                    ->execute();
+        $form_state['paynum'] = $prevpay->id;
+    }
+    $form_state['rebuild'] = TRUE;
+}
+
+function mvp_api_main($query, $method, $data, $wallet){
+
+    $base_url = 'https://api.ethplorer.io/getAddressHistory/'.$wallet;
+    $query['apiKey'] = 'freekey';
+    $query = drupal_http_build_query($query);
+    if (!empty($data)) {
+        $data = drupal_json_encode($data);
+    }
+
+    $options = array(
+      'headers' => array(
+        'Content-Type' => 'application/json',
+      ),
+      'method' => $method,
+      'data' => $data,
+    );
+
+    $response = drupal_http_request($base_url . '?' . $query , $options);
+    return $response;
+}
+
+function mvp_admin_wallets_form($form, &$form_state){
+    
+    $form = array(
+        '#prefix' => '<div id="wallet-form">',
+        '#suffix' => '</div>',
+        '#tree'   => TRUE,
+    );
+    $form['add']['wallet'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Wallet number'),
+
+    );
+
+    $form['add']['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Add'),
+        '#ajax' => array(
+            'callback' => 'mvp_admin_wallets_form_ajax',
+            'wrapper'  => 'wallet-form',
+            'progress' => '',
+        ),
+    );
+    $header = array(
+            'wallet' => array('data' => t('Wallet'), 'field' => 'h.wid'),
+            'created' => array('data' => t('Created'), 'field' => 'h.created'),
+            'balance' => array('data' => t('Current balance')),
+        );
+    $wallets = db_select('mvp_wallets', 'h')
+                ->fields('h')
+                // ->orderByHeader($header)
+                ->execute()
+                ->fetchAll();
+    if (!empty($wallets)) {
+        
+        foreach ($wallets as $key => $value) {
+            $operation_sum = 0;
+            $queryget = mvp_api_main('', 'GET', '', $value->wid);
+                if (!empty($queryget->data)) {
+                    $data = drupal_json_decode($queryget->data);
+                    $operation_sum = 0;
+                        if (!empty($data['operations'])) {
+                            foreach ($data['operations'] as $operation) {
+                                $operation_sum += $operation['value'] / 1000000000;
+                            }
+                        }
+                }
+            $options[$value->id] = array(
+                'wallet' => $value->wid,
+                'created' => format_date($value->created, 'short'),
+                'balance' => $operation_sum,
+            );
+        }
+    }
+    $form['table']['delete'] = array(
+        '#type' => 'submit',
+        '#value' => t('Delete'),
+        '#submit' => array('mvp_admin_wallets_form_delete'),
+        '#ajax' => array(
+            'callback' => 'mvp_admin_wallets_form_ajax',
+            'wrapper'  => 'wallet-form',
+            'progress' => '',
+        ),
+    );
+    $form['table']['wallets'] = array(
+      '#type' => 'tableselect',
+      '#header' => $header,
+      '#options' => $options,
+      '#empty' => t('No wallets available.'),
+    );
+    
+    return $form;
+}
+
+function mvp_admin_wallets_form_ajax($form, &$form_state){
+    return $form;
+}
+
+function mvp_admin_wallets_form_submit($form, &$form_state){
+
+    if (!empty($form_state['values']['add']['wallet'])) {
+        $wallet = $form_state['values']['add']['wallet'];
+        $piece_db = db_select('mvp_wallets', 'h')
+                ->fields('h')
+                ->condition('h.wid', $wallet)
+                ->execute()
+                ->fetchObject();
+        if (!empty($piece_db)) {
+            drupal_set_message(t('This wallet already exists'), 'status', FALSE);
+        } else {
+            $id = db_insert('mvp_wallets')
+                ->fields(array(
+                  'wid' => $wallet,
+                  'created' => time(),
+                ))
+                ->execute();
+            drupal_set_message(t('OK! Added.'), 'status', FALSE);
+        }
+        
+        $form_state['input']   = array();
+        $form_state['values']  = array();
+        $form_state['rebuild'] = TRUE;
+        form_state_values_clean($form_state);
+    }
+}
+
+function mvp_admin_wallets_form_delete($form, &$form_state){
+    foreach ($form_state['values']['table']['wallets'] as $key => $value) {
+        if (!empty($value)) {
+            db_delete('mvp_wallets')
+                ->condition('id', $value)
+                ->execute();
+        }
+    }
+    drupal_set_message(t('Deleted'), 'status', FALSE);
+    $form_state['input']   = array();
+    $form_state['values']  = array();
+    $form_state['rebuild'] = TRUE;
+    form_state_values_clean($form_state);
+}
+
+function mvp_cron(){
+    _mvp_delete_old_paymetns();
+    _mvp_check_old_wallets();
+    _mvp_check_all_payments();
+    _mvp_order_complete();
+}
+
+function _mvp_order_complete(){
+    $prevpay = db_select('mvp_order_pay', 'h')
+                ->fields('h')
+                ->condition('h.status', 1)
+                ->execute()
+                ->fetchAll();
+    if (!empty($prevpay)) {
+        foreach ($prevpay as $key => $value) {
+            $id = db_update('mvp_order_pay')
+                    ->fields(array(
+                        'status' => 2,
+                    ))
+                    ->condition('id', $value->id) 
+                    ->execute();
+            $order = commerce_order_load($value->orderid);
+            $order->status = 'completed';
+            commerce_order_save($order);
+        }
+    }
+}
+
+function _mvp_check_old_wallets(){
+    $wallet_time = time() - 90000;
+    $prevpay = db_select('mvp_order_pay', 'h')
+                ->fields('h')
+                ->condition('h.status', array(2,3))
+                ->condition('h.changed', $wallet_time, '<')
+                ->execute()
+                ->fetchAll();
+    if (!empty($prevpay)) {
+        foreach ($prevpay as $key => $value) {
+            db_update('mvp_wallets')
+                ->fields(array(
+                    'changed' => 0,
+                ))
+                ->condition('id', $value->wid) 
+                ->execute();
+        }
+    }
+}
+
+function _mvp_delete_old_paymetns(){
+    $time = time() - 7200;
+    
+    $prevpay = db_select('mvp_order_pay', 'h')
+                ->fields('h')
+                ->condition('h.status', 0)
+                ->condition('h.changed', $time, '<')
+                ->execute()
+                ->fetchAll();
+    if (!empty($prevpay)) {
+        foreach ($prevpay as $key => $value) {
+            db_update('mvp_order_pay')
+                ->fields(array(
+                    'status' => 3,
+                    'changed' => time(),
+                ))
+                ->condition('id', $value->id) 
+                ->execute();
+            watchdog('mvp', 'Deleted order pay ' . $value->uuid, array(), WATCHDOG_NOTICE, 'link');
+        }
+    }
+}
+
+function _mvp_check_all_payments(){
+    $prevpay = db_select('mvp_order_pay', 'h')
+                ->fields('h')
+                ->condition('h.status', 0)
+                ->execute()
+                ->fetchAll();
+    if (!empty($prevpay)) {
+        foreach ($prevpay as $order_pay) {
+           $walletdb = db_select('mvp_wallets', 'h')
+                ->fields('h')
+                ->condition('h.id', $order_pay->wid)
+                ->execute()
+                ->fetchObject();
+           $queryget = mvp_api_main('', 'GET', '', $walletdb->wid);
+           if (!empty($queryget->data)) {
+                $time = time() - 86400;
+                $data = drupal_json_decode($queryget->data);
+                $operation_sum = 0;
+                $operation_data = array();
+                if (!empty($data['operations'])) {
+                   foreach ($data['operations'] as $operation) {
+                        if ($operation['type'] == 'transfer' && $operation['timestamp'] > $time) {
+                            $operation_sum += $operation['value'] / 1000000000;
+                            $operation_data[] = array(
+                                'walletfrom' => $operation['from'],
+                                'transactionHash' => $operation['transactionHash'],
+                                'transactionDate' => $operation['timestamp'],
+                            ); 
+                        }
+                    }
+                }
+                $order_data = unserialize($order_pay->data);
+                if ($operation_sum >= $order_data['topay']) {
+                    $order_data = array(
+                        'topay' => $order_data['topay'],
+                        'payed' => $operation_sum,
+                        'operation_data' => $operation_data,
+                                );
+                    $id = db_update('mvp_order_pay')
+                            ->fields(array(
+                                'status' => 1,
+                                'data' => serialize($order_data),
+                                'changed' => time(),
+                            ))
+                            ->condition('id', $order_pay->id) 
+                            ->execute();
+                            watchdog('mvp', 'Payed Order ' . $order_pay->uuid, array(), WATCHDOG_NOTICE);
+                }
+            }
+        }
+    }
+}
+
+function mvp_checkout_pay_page($uuid){
+    $build = '';
+    global $user;
+    $prevpay = db_select('mvp_order_pay', 'h')
+                ->fields('h')
+                ->condition('h.uuid', $uuid)
+                ->condition('h.status', 0)
+                ->execute()
+                ->fetchObject();
+    if (!empty($prevpay)) {
+       if ($user->uid == $prevpay->uid) {
+          
+           $walletdb = db_select('mvp_wallets', 'h')
+                ->fields('h')
+                ->condition('h.id', $prevpay->wid)
+                ->execute()
+                ->fetchObject();
+            $order = commerce_order_load_by_number($uuid);
+            $products = commerce_embed_view('commerce_cart_summary', 'default', array($order->order_id), 'cart');
+            
+            $data = unserialize($prevpay->data);
+            $order_id = $uuid;
+            $date = format_date($prevpay->changed, 'short');
+            $topay = $data['topay'];
+            $wallet = $walletdb->wid;
+            drupal_add_js(array('wallet_qr' => $wallet), 'setting');
+            $time_to_left = format_date($prevpay->changed + 7200, 'custom', 'Y/m/d H:i:s');
+            drupal_add_js(array('time_end' => $time_to_left), 'setting');
+            $form = drupal_get_form('mvp_check_pay_status_form', $wallet, $prevpay->id);
+            return theme('mvp_checkout_pay_page', array('order_id' => $order_id, 'date' => $date, 'topay' => $topay, 'wallet' => $wallet, 'form' =>  $form, 'order' => $products));
+            
+       } else {
+            $build = t('No order');
+       }
+       
+    } else {
+        $build = t('No order');
+    }
+    return $build;
+}
+
+function mvp_check_pay_status_form($form, &$form_state, $wallet, $id){
+    $form = array(
+        '#prefix' => '<div id="fullform">',
+        '#suffix' => '</div>',
+    );
+   $form['id'] = array(
+    '#type' => 'hidden',
+    '#value' => $id,
+   );
+   $form['wallet'] = array(
+    '#type' => 'hidden',
+    '#value' => $wallet,
+   );
+   $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Check status'),
+        '#ajax'  => array(
+                'callback' => 'mvp_check_pay_status_form_ajax',
+                'wrapper'  => 'fullform',
+                
+            ),
+        '#attributes' => array(
+            'class' => array('btn-blue')
+        ),
+   ); 
+   return $form;
+}
+
+function mvp_check_pay_status_form_ajax($form, &$form_state){
+    if (!empty($form_state['status']) && $form_state['status'] == 'payed') {
+        $path = "user";
+        ctools_include('ajax');
+        ctools_add_js('ajax-responder');
+        $commands[] = ctools_ajax_command_redirect($path);
+        print ajax_render($commands);
+        exit;
+    } else {
+        return $form;
+    }
+}
+
+function mvp_check_pay_status_form_submit($form, &$form_state){
+    $wallet = $form_state['values']['wallet'];
+    $id = $form_state['values']['id'];
+    $order_pay = db_select('mvp_order_pay', 'h')
+                ->fields('h')
+                ->condition('h.id', $id)
+                ->execute()
+                ->fetchObject();
+    $queryget = mvp_api_main('', 'GET', '', $wallet);
+    if (!empty($queryget->data)) {
+                $time = time() - 86400;
+                $data = drupal_json_decode($queryget->data);
+                $operation_sum = 0;
+                $operation_data = array();
+                if (!empty($data['operations'])) {
+                   foreach ($data['operations'] as $operation) {
+                        if ($operation['type'] == 'transfer' && $operation['timestamp'] > $time) {
+                            $operation_sum += $operation['value'] / 1000000000;
+                            $operation_data[] = array(
+                                'walletfrom' => $operation['from'],
+                                'transactionHash' => $operation['transactionHash'],
+                                'transactionDate' => $operation['timestamp'],
+                            ); 
+                        }
+                    }
+                }
+                $order_data = unserialize($order_pay->data);
+                if ($operation_sum >= $order_data['topay']) {
+                    $order_data = array(
+                        'topay' => $order_data['topay'],
+                        'payed' => $operation_sum,
+                        'operation_data' => $operation_data,
+                                );
+                    $id = db_update('mvp_order_pay')
+                            ->fields(array(
+                                'status' => 1,
+                                'data' => serialize($order_data),
+                                'changed' => time(),
+                            ))
+                            ->condition('id', $order_pay->id) 
+                            ->execute();
+                            watchdog('mvp', 'Payed Order ' . $order_pay->uuid, array(), WATCHDOG_NOTICE);
+                            $form_state['status'] = 'payed';
+                            _mvp_order_complete();
+                            drupal_set_message(t('OK! Successfully payed!'), 'status', FALSE);
+                }
+    }
+            
+    $form_state['rebuild'] = TRUE;
+}
+
+function mvp_preprocess_views_view_table(&$vars){
+    if ($vars['view']->name == 'commerce_orders') {
+        $result = $vars['view']->result;
+        
+        if (!empty($result)) {
+            foreach ($result as $key => $value) {
+                $order_id = $value->order_id;
+                $prevpay = db_select('mvp_order_pay', 'h')
+                    ->fields('h')
+                    ->condition('h.orderid', $order_id)
+                    ->condition('h.status', array(1,2))
+                    ->execute()
+                    ->fetchObject();
+              if (!empty($prevpay)) {
+                $data = unserialize($prevpay->data);
+                if (!empty($data['operation_data'])) {
+                    $views_data = 'Payed: <strong>'.$data['payed'].' VRT</strong><br>';
+                    foreach ($data['operation_data'] as $elsedata) {
+                        $trhash = !empty($elsedata['transactionHash']) ? $elsedata['transactionHash'] : '';
+                        $views_data .= 'From wallet: <strong>'.$elsedata['walletfrom'].'</strong><br>Transaction hash: <strong>'.$trhash.'</strong><br>';
+                    }
+                    $vars['rows'][$key]['nothing'] = $views_data;
+                }
+                
+                
+              }
+              
+            }
+        }
+    }
+}
+
+function mvp_study_callback($tid, $quantity = 4, $start = 0){
+    $build = '';
+    $time = format_date(time(), 'custom', 'Y-m-d H:i:s');
+    $reservedq = new EntityFieldQuery();
+    $reserved = $reservedq->entityCondition('entity_type', 'node')
+            ->entityCondition('bundle', 'services')
+            ->entityCondition('bundle', 'study')
+            ->fieldCondition('field_study_category', 'tid', $tid, '=')
+            ->fieldCondition('field_date', 'value', $time, '>')
+            ->fieldOrderBy('field_date', 'value', 'ASC')
+            ->propertyCondition('status', NODE_PUBLISHED)
+            ->count()
+            ->execute();
+    $query  = new EntityFieldQuery();
+    $start = $start * $quantity;
+    $result = $query->entityCondition('entity_type', 'node')
+        ->entityCondition('bundle', 'study')
+        ->fieldCondition('field_study_category', 'tid', $tid, '=')
+        ->fieldCondition('field_date', 'value', $time, '>')
+        ->fieldOrderBy('field_date', 'value', 'ASC')
+        ->propertyCondition('status', NODE_PUBLISHED)
+        ->range($start, $quantity)
+        ->execute();
+
+    if (!empty($result)) {
+        $current_result = count($result['node']);
+        $nodes = node_load_multiple(array_keys($result['node']));
+        $build = node_view_multiple($nodes, 'teaser');
+    }
+    
+    $reserved = $reserved - $current_result - $start;
+    return array(
+        'nodes' => $build,
+        'count' => $reserved,
+    );
+}
+
+function mvp_study_get_ajax_callback($tid, $page_num, $mode = NULL) {
+  
+  if ($mode != 'ajax') {
+    drupal_set_message('Enable Javascript');
+    drupal_goto(isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '<front>');
+  }
+ 
+  
+  $content = mvp_study_callback($tid, 4, $page_num);
+ 
+  $link = '';
+  if (!empty($content['nodes'])) {
+    $commands[] = ajax_command_append('#st-'.$tid, drupal_render($content['nodes']));
+    $ajax_page = $page_num + 1;
+    
+    if ($content['count'] > 0) {
+                
+                $link = l(t('more'), 'ajax/st/' . $tid . '/' . $ajax_page . '/nojs', array('attributes' => array('class' => array('use-ajax btn btn-blue-dark')), 'html' => TRUE));
+            }
+      
+      
+  }
+  $commands[] = ajax_command_replace('#ajax-pager-'.$tid, '<div id="ajax-pager-'.$tid.'" class="pager text-center">'.render($link).'</div>');
+  
+
+  $page = array(
+    '#type' => 'ajax',
+    '#commands' => $commands,
+  );
+  return $page;
+}
+
+function mvp_hackathons_page(){
+    $build  = '';
+    drupal_add_library('system', 'drupal.ajax');
+    drupal_add_library('system', 'jquery.form');
+    $tid = 7;
+    $nodes = mvp_study_callback($tid, 4, 0);
+    $link = '';
+    if (!empty($nodes['nodes'])) {
+        if ($nodes['count'] > 0) {
+            $link = '<div id="ajax-pager-'.$tid.'" class="pager text-center">' . l(t('more'), 'ajax/st/' . $tid . '/1/nojs', array('attributes' => array('class' => array('use-ajax btn btn-blue-dark')), 'html' => TRUE)) . '</div>';
+        }
+
+    $build['first'] = array('#type' => 'markup', '#markup' => '<div class="hackathons" id="st-'.$tid.'">', '#weight' => '-99');
+    $build[$tid]['nodes'] = $nodes['nodes'];
+    $build['last']  = array('#type' => 'markup', '#markup' => '<div class="line"></div></div>'.$link, '#weight' => 99);
+        
+    }
+    return $build;
+}
+
+function mvp_grants_page(){
+    $build  = '';
+    drupal_add_library('system', 'drupal.ajax');
+    drupal_add_library('system', 'jquery.form');
+    $tid = 8;
+    $nodes = mvp_study_callback($tid, 4, 0);
+    $link = '';
+    if (!empty($nodes['nodes'])) {
+        if ($nodes['count'] > 0) {
+            $link = '<div id="ajax-pager-'.$tid.'" class="pager text-center">' . l(t('more'), 'ajax/st/' . $tid . '/1/nojs', array('attributes' => array('class' => array('use-ajax btn btn-blue-dark')), 'html' => TRUE)) . '</div>';
+        }
+
+    $build['first'] = array('#type' => 'markup', '#markup' => '<div class="hackathons" id="st-'.$tid.'">', '#weight' => '-99');
+    $build[$tid]['nodes'] = $nodes['nodes'];
+    $build['last']  = array('#type' => 'markup', '#markup' => '<div class="line"></div></div>'.$link, '#weight' => 99);
+        
+    }
+    return $build;
+}
+
+function mvp_contact_form($form,&$form_state, $node, $type){
+    $form = array(
+        '#prefix' => '<div id="contact-form">',
+        '#suffix' => '</div>',
+    );
+    $form['nid'] = array(
+        '#type' => 'hidden',
+        '#value' => $node->nid,
+    );
+    $form['name'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Your Name'),
+        '#required' => TRUE,
+    );
+    $form['email'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Your E-mail'),
+        '#required' => TRUE,
+    );
+    $form['country'] = array(
+        '#type' => 'select',
+        '#title' => t('Country'),
+        '#options' => array(
+            'ru' => 'Russia',
+            'us' => 'USA',
+        ),
+    );
+    if ($type == 'tender') {
+        $form['link'] = array(
+            '#type' => 'textfield',
+            '#title' => t('LinkedIN Profile'),
+            '#required' => TRUE,
+        );
+        $form['site'] = array(
+            '#type' => 'textfield',
+            '#title' => t('Company website'),
+            '#required' => TRUE,
+        );
+    }
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Send'),
+        '#ajax'  => array(
+                'callback' => 'mvp_cart_form_ajax',
+                'wrapper'  => 'contact-form',
+                'progress' => '',
+            ),
+    );
+    return $form;
+}
+
+function mvp_contact_form_ajax($form, &$form_state){
+    return $form;
+}
+
+function mvp_form_system_site_information_settings_alter(&$form, &$form_state, $form_id)
+{
+    $form['site_information']['mvp_facebook'] = array(
+        '#type'          => 'textfield',
+        '#title'         => 'Facebook link',
+        '#default_value' => variable_get('mvp_facebook'),
+    );
+    $form['site_information']['mvp_vk'] = array(
+        '#type'          => 'textfield',
+        '#title'         => 'VK link',
+        '#default_value' => variable_get('mvp_vk'),
+    );
+    $form['site_information']['mvp_twitter'] = array(
+        '#type'          => 'textfield',
+        '#title'         => 'Twitter link',
+        '#default_value' => variable_get('mvp_twitter'),
+    );
+    $form['site_information']['mvp_youtube'] = array(
+        '#type'          => 'textfield',
+        '#title'         => 'Youtube link',
+        '#default_value' => variable_get('mvp_youtube'),
+    );
+    $form['site_information']['mvp_telegram'] = array(
+        '#type'          => 'textfield',
+        '#title'         => 'Telegram link',
+        '#default_value' => variable_get('mvp_telegram'),
+    );
+    $form['site_information']['mvp_btt'] = array(
+        '#type'          => 'textfield',
+        '#title'         => 'Bitcoin link',
+        '#default_value' => variable_get('mvp_btt'),
+    );
+}
+
+function mvp_line_item_delete($order, $line_item_id){
+    $line_item = commerce_line_item_load($line_item_id);
+    commerce_entity_reference_delete($order, 'commerce_line_items', 'line_item_id', $line_item_id);
+    $wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+    commerce_line_item_delete($line_item->line_item_id);
+    commerce_order_save($order);
+    return $order;
+}

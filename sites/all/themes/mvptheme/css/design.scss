@@ -1,0 +1,93 @@
+@import "./variables.scss";
+
+body {
+  @include reset;
+  background: {
+    image: url("../images/bg.png");
+    position: top center;
+    size: cover;
+    repeat: no-repeat;
+    attachment: scroll;
+  }
+
+  #navbar {
+    width: 100%;
+    height: $line * 7;
+    padding: 0 $line * 2.5;
+
+    .container-fluid {
+      width: inherit;
+      max-width: $line * 150;
+      height: inherit;
+
+      .navbar-top {
+        width: inherit;
+        height: inherit;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        .logo {
+          flex-basis: 20%;
+          img {
+            width: 100%;
+          }
+        }
+
+        .navbar-collapse {
+          flex-basis: 40%;
+          nav {
+            ul {
+              li {
+                list-style: none;
+                a {
+                  font: {
+                    family: $roboto;
+                    size: 1em;
+                  }
+                  color: $white;
+                  text-decoration: none;
+
+                  &:active, &:visited {
+                    color: $white;
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        .user-menu {
+          flex-basis: 20%;
+          .region {
+            .block {
+              #top-block-ajax {
+                a {
+                  font: {
+                    family: $robotoBlack;
+                    size: 1em;
+                  }
+                  color: $white;
+                  text-transform: uppercase;
+                  text-decoration: none;
+
+                  &:active, &:visited {
+                    color: $white;
+                  }
+                }
+
+                a:nth-of-type(2) {
+                  margin: 0 $line * 3.5 0 $line * 2;
+                }
+
+                .btn-blue {
+                  @include headerButton;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
